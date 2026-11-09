@@ -1,0 +1,25 @@
+name: ticket-monitor
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"   # keeps a watcher job alive around the clock
+  workflow_dispatch:          # "Run workflow" button for a manual start
+
+concurrency:
+  group: ticket-monitor       # at most one running watcher (+ one waiting)
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Watch ticket pages (~5h45, check every ~2 min)
+        run: python monitor.py --duration 20700
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
