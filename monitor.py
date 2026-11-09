@@ -98,6 +98,7 @@ def run(duration=None, once=False):
     state = {p["url"]: {"status": None, "date": None, "last_alert": 0, "errors": 0}
              for p in PAGES}
     started = time.time()
+    announced = once  # send a "bot started" message after the first round of checks
     while True:
         for p in PAGES:
             s = state[p["url"]]
@@ -128,6 +129,19 @@ def run(duration=None, once=False):
                     telegram(f"ℹ️ {p['name']}: надпись сменилась на «sold out ({date})» — "
                              f"квоту выложили и раскупили между проверками.")
             s["status"], s["date"] = status, date
+
+        if not announced:
+            announced = True
+            lines = []
+            for p in PAGES:
+                s = state[p["url"]]
+                if s["status"] == "soldout":
+                    lines.append(f"• {p['name']}: sold out ({s['date']})")
+                elif s["status"] == "open":
+                    lines.append(f"• {p['name']}: sold out НЕТ — проверьте сайт!")
+                else:
+                    lines.append(f"• {p['name']}: не удалось открыть страницу")
+            telegram(f"✅ Бот запущен ({now()}), проверяю каждые ~2 мин.\n" + "\n".join(lines))
 
         if once:
             return
