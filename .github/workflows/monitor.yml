@@ -6,7 +6,7 @@ on:
   workflow_dispatch:          # "Run workflow" button for a manual start
 
 concurrency:
-  group: ticket-monitor       # at most one running watcher (+ one waiting)
+  group: ticket-monitor       # one watcher at a time; the next one waits in the queue
   cancel-in-progress: false
 
 jobs:
@@ -15,11 +15,28 @@ jobs:
     timeout-minutes: 355
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Watch ticket pages (~5h45, check every ~2 min)
+
+      # bring back the last known status so a restart doesn't miss a change
+      - name: Restore state
+        uses: actions/cache/restore@v4
+        with:
+          path: state.json
+          key: ticket-state-${{ github.run_id }}
+          restore-keys: ticket-state-
+
+      - name: Watch ticket pages (~5h45, check every ~1 min)
         run: python monitor.py --duration 20700
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+      - name: Save state
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: state.json
+          key: ticket-state-${{ github.run_id }}
